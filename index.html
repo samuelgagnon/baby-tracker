@@ -408,7 +408,7 @@ function render() {
             <tr>
               <td>
                 ${i.date.toLocaleTimeString()}<br>
-                🍎 ${i.description || ""} — ${foodLabel(i.score)}
+                🍎 ${i.description || ""} — ${foodLabel(i.score)} (${i.score})
               </td>
               <td><button class="delete-btn" onclick="deleteItem('food','${i.id}')">X</button></td>
             </tr>`;
