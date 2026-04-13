@@ -3,25 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Suivi des boires</title>
+  <title>Suivi bébé</title>
 
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       background: #f5f5f5;
       margin: 0;
-      padding: 0;
       display: flex;
       justify-content: center;
     }
 
     .container {
-      max-width: 500px;
+      max-width: 520px;
       width: 100%;
       padding: 16px;
     }
 
     h1 { text-align: center; }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 18px;
+      background: #ddd;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #007aff;
+      color: white;
+    }
 
     .card {
       background: white;
@@ -39,29 +59,28 @@
 
     .buttons button {
       flex: 1;
-      padding: 14px;
-      font-size: 14px;
+      padding: 12px;
       border-radius: 12px;
       border: none;
       background: #007aff;
       color: white;
       font-weight: bold;
-      white-space: pre-line;
+      font-size: 13px;
     }
 
-    input[type="datetime-local"] {
+    input, textarea {
       width: 100%;
       padding: 12px;
       border-radius: 10px;
       border: 1px solid #ccc;
       font-size: 16px;
+      margin-bottom: 10px;
     }
 
     .datetime-row {
       display: flex;
       gap: 10px;
       align-items: center;
-      margin-bottom: 10px;
     }
 
     .now-btn {
@@ -70,7 +89,6 @@
       border: none;
       background: #eee;
       font-size: 20px;
-      cursor: pointer;
     }
 
     .add-btn {
@@ -93,6 +111,7 @@
       padding: 10px;
       border-bottom: 1px solid #eee;
       font-size: 14px;
+      vertical-align: top;
     }
 
     .day-header {
@@ -108,35 +127,57 @@
       border-radius: 8px;
     }
 
-    .empty {
-      text-align: center;
-      color: #999;
-      padding: 20px;
-    }
+    .hidden { display: none; }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>🍼 Boires Élise</h1>
+<div class="container">
+  <h1>🍼 Tracker bébé</h1>
 
-    <div class="card">
-      <div class="buttons" id="qtyButtons"></div>
-
-      <div class="datetime-row">
-        <input type="datetime-local" id="datetime">
-        <button class="now-btn" onclick="setNow()">⏱️</button>
-      </div>
-
-      <button class="add-btn" onclick="addDrink()">Ajouter</button>
-    </div>
-
-    <div class="card">
-      <table>
-        <tbody id="table"></tbody>
-      </table>
-    </div>
+  <div class="tabs">
+    <button class="tab active" id="tabMilk" onclick="switchTab('milk')">🍼</button>
+    <button class="tab" id="tabFood" onclick="switchTab('food')">🍎</button>
   </div>
+
+  <!-- 🍼 MILK -->
+  <div class="card" id="milkForm">
+    <div class="buttons" id="qtyButtons"></div>
+
+    <div class="datetime-row">
+      <input type="datetime-local" id="datetimeMilk">
+      <button class="now-btn" onclick="setNow('datetimeMilk')">⏱️</button>
+    </div>
+
+    <button class="add-btn" onclick="addMilk()">Ajouter biberon</button>
+  </div>
+
+  <!-- 🍎 FOOD -->
+  <div class="card hidden" id="foodForm">
+    <input type="text" id="foodDesc" placeholder="Description du repas">
+
+    <div class="buttons">
+      <button onclick="selectFood('snack',1)">2-3 bouchées</button>
+      <button onclick="selectFood('light',2)">Collation</button>
+      <button onclick="selectFood('small',3)">Petit repas</button>
+      <button onclick="selectFood('meal',4)">Repas</button>
+      <button onclick="selectFood('big',5)">Gros repas</button>
+    </div>
+
+    <div class="datetime-row">
+      <input type="datetime-local" id="datetimeFood">
+      <button class="now-btn" onclick="setNow('datetimeFood')">⏱️</button>
+    </div>
+
+    <button class="add-btn" onclick="addFood()">Ajouter repas</button>
+  </div>
+
+  <div class="card">
+    <table>
+      <tbody id="table"></tbody>
+    </table>
+  </div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -163,129 +204,162 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const drinksRef = collection(db, "drinks");
 
-let selectedQuantity = 120;
+const milkRef = collection(db, "milk");
+const foodRef = collection(db, "food");
+
+let selectedMilk = 120;
+let selectedFoodScore = 3;
+let currentTab = "milk";
 
 function mlToOz(ml) {
   return Math.round(ml / 29.5735);
 }
 
-function formatQty(q) {
-  return `${q} ml / ${mlToOz(q)} oz`;
+function getKey(date) {
+  return date.toISOString().split("T")[0];
 }
 
-function getDateKey(date) {
-  return date.toISOString().split("T")[0]; // YYYY-MM-DD
-}
+window.switchTab = function(tab) {
+  currentTab = tab;
 
-function renderButtons() {
+  document.getElementById("milkForm").classList.toggle("hidden", tab !== "milk");
+  document.getElementById("foodForm").classList.toggle("hidden", tab !== "food");
+
+  document.getElementById("tabMilk").classList.toggle("active", tab === "milk");
+  document.getElementById("tabFood").classList.toggle("active", tab === "food");
+};
+
+window.selectFood = function(_, score) {
+  selectedFoodScore = score;
+};
+
+window.setNow = function(id) {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString().slice(0,16);
+  document.getElementById(id).value = local;
+};
+
+window.addMilk = async function() {
+  let dt = document.getElementById("datetimeMilk").value;
+  if (!dt) dt = new Date().toISOString();
+
+  await addDoc(milkRef, {
+    type: "milk",
+    quantity: selectedMilk,
+    datetime: new Date(dt)
+  });
+};
+
+window.addFood = async function() {
+  let dt = document.getElementById("datetimeFood").value;
+  if (!dt) dt = new Date().toISOString();
+
+  const desc = document.getElementById("foodDesc").value;
+
+  await addDoc(foodRef, {
+    type: "food",
+    description: desc,
+    score: selectedFoodScore,
+    datetime: new Date(dt)
+  });
+};
+
+window.deleteItem = async function(collectionName, id) {
+  if (confirm("Supprimer ?")) {
+    await deleteDoc(doc(db, collectionName, id));
+  }
+};
+
+renderMilkButtons();
+
+function renderMilkButtons() {
   const container = document.getElementById("qtyButtons");
-  const values = [60, 120, 180];
+  const values = [60,120,180];
 
   container.innerHTML = values.map(v => `
-    <button onclick="selectQuantity(${v})" data-q="${v}">
-      ${formatQty(v)}
+    <button onclick="selectedMilk=${v}" style="opacity:${v===selectedMilk?1:0.5}">
+      ${v} ml
     </button>
   `).join("");
 }
 
-window.selectQuantity = function(q) {
-  selectedQuantity = q;
-  document.querySelectorAll(".buttons button").forEach(btn => {
-    btn.style.opacity = (parseInt(btn.dataset.q) === q) ? "1" : "0.5";
-  });
-};
+const qMilk = query(milkRef, orderBy("datetime","desc"));
+const qFood = query(foodRef, orderBy("datetime","desc"));
 
-window.setNow = function () {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-  document.getElementById("datetime").value = local;
-};
+let milkData = [];
+let foodData = [];
 
-window.addDrink = async function () {
-  let datetime = document.getElementById("datetime").value;
-  if (!datetime) datetime = new Date().toISOString();
+onSnapshot(qMilk, snap => {
+  milkData = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  render();
+});
 
-  await addDoc(drinksRef, {
-    quantity: selectedQuantity,
-    datetime: new Date(datetime)
-  });
-};
+onSnapshot(qFood, snap => {
+  foodData = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  render();
+});
 
-window.deleteDrink = async function (id) {
-  if (confirm("Supprimer ce boire ?")) {
-    await deleteDoc(doc(db, "drinks", id));
-  }
-};
-
-const q = query(drinksRef, orderBy("datetime", "desc"));
-
-onSnapshot(q, (snapshot) => {
+function render() {
   const table = document.getElementById("table");
   table.innerHTML = "";
 
-  if (snapshot.empty) {
-    table.innerHTML = `<tr><td class="empty">Aucun boire</td></tr>`;
-    return;
-  }
+  const all = [
+    ...milkData.map(d => ({...d, kind:"milk"})),
+    ...foodData.map(d => ({...d, kind:"food"}))
+  ].sort((a,b)=>b.datetime.seconds - a.datetime.seconds);
 
   const groups = {};
 
-  snapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    const date = new Date(data.datetime.seconds * 1000);
-
-    const key = getDateKey(date);
+  all.forEach(item => {
+    const date = new Date(item.datetime.seconds * 1000);
+    const key = getKey(date);
 
     if (!groups[key]) {
-      groups[key] = {
-        total: 0,
-        items: []
-      };
+      groups[key] = { milk:0, food:0, items:[] };
     }
 
-    groups[key].total += data.quantity;
-    groups[key].items.push({
-      id: docSnap.id,
-      date,
-      quantity: data.quantity
-    });
+    if (item.kind === "milk") groups[key].milk += item.quantity;
+    else groups[key].food += item.score;
+
+    groups[key].items.push({...item, date});
   });
 
-  const sortedDays = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-
-  sortedDays.forEach(day => {
+  Object.keys(groups).sort((a,b)=>b.localeCompare(a)).forEach(day => {
     const g = groups[day];
 
     table.innerHTML += `
       <tr class="day-header">
         <td colspan="2">
-          📅 ${day} — Total: ${g.total} ml / ${mlToOz(g.total)} oz
+          📅 ${day} — 🍼 ${g.milk} ml (${mlToOz(g.milk)} oz) — 🍎 ${g.food}
         </td>
       </tr>
     `;
 
-    g.items.forEach(item => {
-      table.innerHTML += `
-        <tr>
-          <td>
-            ${item.date.toLocaleTimeString()}<br>
-            <strong>${item.quantity} ml / ${mlToOz(item.quantity)} oz</strong>
-          </td>
-          <td style="text-align:right;">
-            <button class="delete-btn" onclick="deleteDrink('${item.id}')">X</button>
-          </td>
-        </tr>
-      `;
+    g.items.forEach(i => {
+      if (i.kind === "milk") {
+        table.innerHTML += `
+          <tr>
+            <td>
+              ${i.date.toLocaleTimeString()}<br>
+              🍼 ${i.quantity} ml (${mlToOz(i.quantity)} oz)
+            </td>
+            <td><button class="delete-btn" onclick="deleteItem('milk','${i.id}')">X</button></td>
+          </tr>`;
+      } else {
+        table.innerHTML += `
+          <tr>
+            <td>
+              ${i.date.toLocaleTimeString()}<br>
+              🍎 ${i.description || ""} (${i.score})
+            </td>
+            <td><button class="delete-btn" onclick="deleteItem('food','${i.id}')">X</button></td>
+          </tr>`;
+      }
     });
   });
-});
-
-renderButtons();
-selectQuantity(120);
+}
 </script>
 </body>
 </html>
