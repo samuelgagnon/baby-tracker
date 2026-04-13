@@ -235,6 +235,18 @@ function getKey(date) {
   return date.toISOString().split("T")[0];
 }
 
+/* ---------------- FOOD LABEL ---------------- */
+function foodLabel(score) {
+  switch(score) {
+    case 1: return "2-3 bouchées";
+    case 2: return "Collation";
+    case 3: return "Petit repas";
+    case 4: return "Repas";
+    case 5: return "Gros repas";
+    default: return "";
+  }
+}
+
 /* ---------------- TABS ---------------- */
 window.switchTab = function(tab) {
   currentTab = tab;
@@ -376,7 +388,7 @@ function render() {
       table.innerHTML += `
         <tr class="day-header">
           <td colspan="2">
-            📅 ${day} — 🍼 ${g.milk} ml (${mlToOz(g.milk)} oz — ${mlToOz(g.milk)} oz de lait) — 🍎 ${g.food}
+            📅 ${day} — 🍼 ${g.milk} ml (${mlToOz(g.milk)} oz) — 🍎 ${g.food}
           </td>
         </tr>
       `;
@@ -387,7 +399,7 @@ function render() {
             <tr>
               <td>
                 ${i.date.toLocaleTimeString()}<br>
-                🍼 ${i.quantity} ml (${mlToOz(i.quantity)} oz — ${mlToOz(i.quantity)} oz de lait)
+                🍼 ${i.quantity} ml (${mlToOz(i.quantity)} oz)
               </td>
               <td><button class="delete-btn" onclick="deleteItem('milk','${i.id}')">X</button></td>
             </tr>`;
@@ -396,7 +408,7 @@ function render() {
             <tr>
               <td>
                 ${i.date.toLocaleTimeString()}<br>
-                🍎 ${i.description || ""} (${i.score})
+                🍎 ${i.description || ""} — ${foodLabel(i.score)}
               </td>
               <td><button class="delete-btn" onclick="deleteItem('food','${i.id}')">X</button></td>
             </tr>`;
