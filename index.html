@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Suivi des boires</title>
+</head>
+<body>
+  <h1>🍼 Suivi des boires</h1>
+
+  <div>
+    <label>Quantité :</label>
+    <select id="quantity">
+      <option value="60">60 ml</option>
+      <option value="120">120 ml</option>
+      <option value="180">180 ml</option>
+    </select>
+
+    <label>Date/heure :</label>
+    <input type="datetime-local" id="datetime">
+
+    <button onclick="addDrink()">Ajouter</button>
+  </div>
+
+  <h2>Historique</h2>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Quantité</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="table"></tbody>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      deleteDoc,
+      doc,
+      query,
+      orderBy,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+	  apiKey: "AIzaSyD7zf8uIGfIIbDg8EeSFGshqtlbt0zwbb4",
+	  authDomain: "formulatracker-d8355.firebaseapp.com",
+	  projectId: "formulatracker-d8355",
+	  storageBucket: "formulatracker-d8355.firebasestorage.app",
+	  messagingSenderId: "35277205492",
+	  appId: "1:35277205492:web:0daa8a44c15dad8d5c53a1",
+	  measurementId: "G-BN5ZJF614C"
+	};
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const drinksRef = collection(db, "drinks");
+
+    window.addDrink = async function () {
+      const quantity = document.getElementById("quantity").value;
+      let datetime = document.getElementById("datetime").value;
+
+      if (!datetime) {
+        datetime = new Date().toISOString();
+      }
+
+      await addDoc(drinksRef, {
+        quantity: parseInt(quantity),
+        datetime: new Date(datetime)
+      });
+    };
+
+    window.deleteDrink = async function (id) {
+      if (confirm("Supprimer ce boire ?")) {
+        await deleteDoc(doc(db, "drinks", id));
+      }
+    };
+
+    const q = query(drinksRef, orderBy("datetime", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      const table = document.getElementById("table");
+      table.innerHTML = "";
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+
+        const row = `
+          <tr>
+            <td>${new Date(data.datetime.seconds * 1000).toLocaleString()}</td>
+            <td>${data.quantity} ml</td>
+            <td><button onclick="deleteDrink('${docSnap.id}')">Supprimer</button></td>
+          </tr>
+        `;
+
+        table.innerHTML += row;
+      });
+    });
+  </script>
+</body>
+</html>
