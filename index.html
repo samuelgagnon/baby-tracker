@@ -264,7 +264,6 @@ window.addMilk = async function() {
   if (!dt) dt = new Date().toISOString();
 
   await addDoc(milkRef, {
-    type: "milk",
     quantity: selectedMilk,
     datetime: new Date(dt)
   });
@@ -277,7 +276,6 @@ window.addFood = async function() {
   const desc = document.getElementById("foodDesc").value;
 
   await addDoc(foodRef, {
-    type: "food",
     description: desc,
     score: selectedFoodScore,
     datetime: new Date(dt)
@@ -291,7 +289,7 @@ window.deleteItem = async function(collectionName, id) {
   }
 };
 
-/* ---------------- MILK BUTTONS FIX ---------------- */
+/* ---------------- MILK BUTTONS ---------------- */
 function renderMilkButtons() {
   const container = document.getElementById("qtyButtons");
   const values = [60,120,180];
@@ -378,7 +376,7 @@ function render() {
       table.innerHTML += `
         <tr class="day-header">
           <td colspan="2">
-            📅 ${day} — 🍼 ${g.milk} ml (${mlToOz(g.milk)} oz) — 🍎 ${g.food}
+            📅 ${day} — 🍼 ${g.milk} ml (${mlToOz(g.milk)} oz — ${mlToOz(g.milk)} oz de lait) — 🍎 ${g.food}
           </td>
         </tr>
       `;
@@ -389,7 +387,7 @@ function render() {
             <tr>
               <td>
                 ${i.date.toLocaleTimeString()}<br>
-                🍼 ${i.quantity} ml (${mlToOz(i.quantity)} oz)
+                🍼 ${i.quantity} ml (${mlToOz(i.quantity)} oz — ${mlToOz(i.quantity)} oz de lait)
               </td>
               <td><button class="delete-btn" onclick="deleteItem('milk','${i.id}')">X</button></td>
             </tr>`;
