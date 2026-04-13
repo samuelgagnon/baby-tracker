@@ -41,13 +41,14 @@
 
     .buttons button {
       flex: 1;
-      padding: 16px;
-      font-size: 18px;
+      padding: 14px;
+      font-size: 14px;
       border-radius: 12px;
       border: none;
       background: #007aff;
       color: white;
       font-weight: bold;
+      white-space: pre-line;
     }
 
     input[type="datetime-local"] {
@@ -57,6 +58,22 @@
       border: 1px solid #ccc;
       margin-bottom: 10px;
       font-size: 16px;
+    }
+
+    .datetime-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .now-btn {
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      background: #ff9500;
+      color: white;
+      font-weight: bold;
+      white-space: nowrap;
     }
 
     .add-btn {
@@ -102,13 +119,12 @@
     <h1>🍼 Boires bébé</h1>
 
     <div class="card">
-      <div class="buttons">
-        <button onclick="selectQuantity(60)">60</button>
-        <button onclick="selectQuantity(120)">120</button>
-        <button onclick="selectQuantity(180)">180</button>
-      </div>
+      <div class="buttons" id="qtyButtons"></div>
 
-      <input type="datetime-local" id="datetime">
+      <div class="datetime-row">
+        <input type="datetime-local" id="datetime">
+        <button class="now-btn" onclick="setNow()">Now</button>
+      </div>
 
       <button class="add-btn" onclick="addDrink()">Ajouter</button>
     </div>
@@ -134,14 +150,14 @@
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
-	  apiKey: "AIzaSyD7zf8uIGfIIbDg8EeSFGshqtlbt0zwbb4",
-	  authDomain: "formulatracker-d8355.firebaseapp.com",
-	  projectId: "formulatracker-d8355",
-	  storageBucket: "formulatracker-d8355.firebasestorage.app",
-	  messagingSenderId: "35277205492",
-	  appId: "1:35277205492:web:0daa8a44c15dad8d5c53a1",
-	  measurementId: "G-BN5ZJF614C"
-	};
+      apiKey: "AIzaSyD7zf8iUGfIIbDg8EeSFGshqtlbt0zwbb4",
+      authDomain: "formulatracker-d8355.firebaseapp.com",
+      projectId: "formulatracker-d8355",
+      storageBucket: "formulatracker-d8355.firebasestorage.app",
+      messagingSenderId: "35277205492",
+      appId: "1:35277205492:web:0daa8a44c15dad8d5c53a1",
+      measurementId: "G-BN5ZJF614C"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -149,11 +165,38 @@
 
     let selectedQuantity = 120;
 
+    function mlToOz(ml) {
+      return Math.round(ml / 29.5735);
+    }
+
+    function formatQty(q) {
+      return `${q} ml / ${mlToOz(q)} oz`;
+    }
+
+    function renderButtons() {
+      const container = document.getElementById("qtyButtons");
+      const values = [60, 120, 180];
+
+      container.innerHTML = values.map(v => `
+        <button onclick="selectQuantity(${v})" data-q="${v}">
+          ${formatQty(v)}
+        </button>
+      `).join("");
+    }
+
     window.selectQuantity = function(q) {
       selectedQuantity = q;
       document.querySelectorAll(".buttons button").forEach(btn => {
-        btn.style.opacity = (btn.textContent == q) ? "1" : "0.5";
+        btn.style.opacity = (parseInt(btn.dataset.q) === q) ? "1" : "0.5";
       });
+    };
+
+    window.setNow = function () {
+      const now = new Date();
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      document.getElementById("datetime").value = local;
     };
 
     window.addDrink = async function () {
@@ -188,12 +231,13 @@
 
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
+        const ml = data.quantity;
 
         table.innerHTML += `
           <tr>
             <td>
               ${new Date(data.datetime.seconds * 1000).toLocaleString()}<br>
-              <strong>${data.quantity} ml</strong>
+              <strong>${ml} ml / ${mlToOz(ml)} oz</strong>
             </td>
             <td style="text-align:right;">
               <button class="delete-btn" onclick="deleteDrink('${docSnap.id}')">X</button>
@@ -203,6 +247,7 @@
       });
     });
 
+    renderButtons();
     selectQuantity(120);
   </script>
 </body>
